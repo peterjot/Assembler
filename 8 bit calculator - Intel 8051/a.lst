@@ -1,0 +1,462 @@
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 1
+
+
+
+
+
+       MCS-51 Family Macro Assembler   A S E M - 5 1   V 1.3
+       =====================================================
+
+
+
+	Source File:	a.asm
+	Object File:	a.hex
+	List File:	a.lst
+
+
+
+ Line  I  Addr  Code            Source
+
+    1:				; PIOTR JASINA
+    2:				; 8 bit calculator with serial communication
+    3:				; Intel 8051 mikrocontroller
+    4:
+    5:		N	 31	NUM_FIRST DATA 031h
+    6:		N	 32	NUM_SEC DATA 032h
+    7:		N	 33	NUM_RES DATA 033h
+    8:
+    9:
+   10:
+   11:		N      0000	ORG 0000h
+   12:	  0000			_RESET:
+   13:	  0000	02 01 00		LJMP _INIT
+   14:		N      0100		ORG 0100h
+   15:
+   16:	  0100			_INIT:
+   17:
+   18:					; SM0 = 0 SM1 = 1  - set serial port to mode 1
+   19:					; serial port config
+   20:	  0100	75 98 50		MOV SCON, #01010000b
+   21:
+   22:	  0103	53 87 7F		ANL PCON, #01111111b ; set SMOD = 0
+   23:	  0106	75 89 20		MOV TMOD, #00100000b ; set timer to mode 2
+   24:	  0109	C2 8E			CLR TR1
+   25:	  010B	C2 8F			CLR TF1
+   26:
+   27:	  010D	75 31 00		MOV NUM_FIRST, #0d
+   28:	  0110	75 32 00		MOV NUM_SEC, #0d
+   29:	  0113	75 33 00		MOV NUM_RES, #0d
+   30:	  0116	78 00			MOV R0, #0d
+   31:	  0118	79 00			MOV R1, #0d
+   32:	  011A	7A 00			MOV R2, #0d
+   33:	  011C	7C 00			MOV R4, #0d
+   34:	  011E	7D 00			MOV R5, #0d
+   35:	  0120	7E 00			MOV R6, #0d
+   36:
+   37:					; configure timer
+   38:	  0122	75 8B FD		MOV TL1, #0FDh
+   39:	  0125	75 8D FD		MOV TH1, #0FDh
+   40:	  0128	D2 8E			SETB TR1
+   41:
+   42:	  012A			_LOOP:
+   43:					; ascii code to digit
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 2
+
+
+
+ Line  I  Addr  Code            Source
+
+   44:					; digit = ascii code - 48
+   45:					; digit to asci
+   46:					; ascii code = digit + 48
+   47:					; ----------------------------
+   48:
+   49:
+   50:	  012A				_IS_LOOP_0:
+   51:	  012A	B8 00 0B		CJNE R0,#0d, _IS_LOOP_1
+   52:					;  "$" symbol is address of the current instruction
+   53:	  012D	30 98 FD		JNB RI,$ ; wait for something to read
+   54:	  0130	E5 99			MOV A,SBUF ; read from buffer
+   55:	  0132	12 02 1B		LCALL _100_NUMBER ; calculate hundreds
+   56:	  0135	08			INC R0
+   57:	  0136	C2 98			CLR RI
+   58:
+   59:	  0138				_IS_LOOP_1:
+   60:	  0138	B8 01 0B		CJNE R0,#1d, _IS_LOOP_2
+   61:	  013B	30 98 FD		JNB RI,$
+   62:	  013E	E5 99			MOV A,SBUF
+   63:	  0140	12 02 12		LCALL _10_NUMBER ; calc dozens
+   64:	  0143	08			INC R0
+   65:	  0144	C2 98			CLR RI
+   66:
+   67:	  0146				_IS_LOOP_2:
+   68:	  0146	B8 02 0F		CJNE R0,#2d, _IS_LOOP_3
+   69:	  0149	30 98 FD		JNB RI,$
+   70:	  014C	E5 99			MOV A,SBUF
+   71:	  014E	12 02 0D		LCALL _1_NUMBER ; calculate unity
+   72:	  0151	89 31			MOV NUM_FIRST, R1 ; gets calculated number to var
+   73:	  0153	79 00			MOV R1, #0d;
+   74:	  0155	08			INC R0
+   75:	  0156	C2 98			CLR RI
+   76:
+   77:	  0158				_IS_LOOP_3: ; read operator (+, -, *, /)
+   78:	  0158	B8 03 09		CJNE R0,#3d, _IS_LOOP_4
+   79:	  015B	30 98 FD		JNB RI,$
+   80:	  015E	E5 99			MOV A,SBUF
+   81:	  0160	FA			MOV R2,A
+   82:	  0161	08			INC R0
+   83:	  0162	C2 98			CLR RI
+   84:
+   85:	  0164				_IS_LOOP_4:
+   86:	  0164	B8 04 0B		CJNE R0,#4d, _IS_LOOP_5
+   87:	  0167	30 98 FD		JNB RI,$
+   88:	  016A	E5 99			MOV A,SBUF
+   89:	  016C	12 02 1B		LCALL _100_NUMBER
+   90:	  016F	08			INC R0
+   91:	  0170	C2 98			CLR RI
+   92:
+   93:	  0172				_IS_LOOP_5:
+   94:	  0172	B8 05 0B		CJNE R0,#5d, _IS_LOOP_6
+   95:	  0175	30 98 FD		JNB RI,$
+   96:	  0178	E5 99			MOV A,SBUF
+   97:	  017A	12 02 12		LCALL _10_NUMBER
+   98:	  017D	08			INC R0
+   99:	  017E	C2 98			CLR RI
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 3
+
+
+
+ Line  I  Addr  Code            Source
+
+  100:
+  101:	  0180				_IS_LOOP_6:
+  102:	  0180	B8 06 0F		CJNE R0,#6d, _IS_LOOP_7
+  103:	  0183	30 98 FD		JNB RI,$
+  104:	  0186	E5 99			MOV A,SBUF
+  105:	  0188	12 02 0D		LCALL _1_NUMBER
+  106:	  018B	89 32			MOV NUM_SEC, R1 ; save number converted from characters
+  107:	  018D	79 00			MOV R1, #0d
+  108:	  018F	08			INC R0
+  109:	  0190	C2 98			CLR RI
+  110:
+  111:	  0192				_IS_LOOP_7: ; read "=" operator
+  112:	  0192	B8 07 2C		CJNE R0,#7d, _IS_LOOP_8
+  113:	  0195	30 98 FD		JNB RI,$
+  114:	  0198	E5 99			MOV A,SBUF
+  115:
+  116:	  019A				_ADD_CHAR:
+  117:	  019A	BA 2B 06		CJNE R2,#'+', _SUB_CHAR
+  118:	  019D	12 02 3F		LCALL _ADDITION
+  119:	  01A0	02 01 BB		LJMP _DEFAULT
+  120:
+  121:	  01A3				_SUB_CHAR:
+  122:	  01A3	BA 2D 06	    CJNE R2,#'-', _MUL_CHAR
+  123:	  01A6	12 02 4E		LCALL _SUBTRACTION
+  124:	  01A9	02 01 BB		LJMP _DEFAULT
+  125:
+  126:	  01AC				_MUL_CHAR:
+  127:	  01AC	BA 2A 06	    CJNE R2,#'*', _DIV_CHAR
+  128:	  01AF	12 02 5D		LCALL _MULTIPLICATION
+  129:	  01B2	02 01 BB		LJMP _DEFAULT
+  130:
+  131:	  01B5				_DIV_CHAR:
+  132:	  01B5	BA 2F 03		CJNE R2,#'/', _DEFAULT
+  133:	  01B8	12 02 6E		LCALL __DIVISION
+  134:
+  135:	  01BB				_DEFAULT:
+  136:
+  137:	  01BB	12 02 23		LCALL _INT_TO_STRING_TO_R4_R5_R6 ; converts number to ascii charaters and saves in R4, R5 i
+				R6
+  138:	  01BE	08			INC R0
+  139:	  01BF	C2 98			CLR RI
+  140:
+  141:					; send the result via serial transmission
+  142:	  01C1				_IS_LOOP_8:
+  143:	  01C1	B8 08 08		CJNE R0,#8d, _IS_LOOP_9
+  144:	  01C4	C2 99			CLR TI
+  145:	  01C6	8C 99			MOV SBUF,R4
+  146:	  01C8	30 99 FD		JNB TI, $
+  147:	  01CB	08			INC R0
+  148:
+  149:	  01CC				_IS_LOOP_9:
+  150:	  01CC	B8 09 08		CJNE R0,#9d, _IS_LOOP_10
+  151:	  01CF	C2 99			CLR TI
+  152:	  01D1	8D 99			MOV SBUF,R5
+  153:	  01D3	30 99 FD		JNB TI, $
+  154:	  01D6	08			INC R0
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 4
+
+
+
+ Line  I  Addr  Code            Source
+
+  155:
+  156:	  01D7				_IS_LOOP_10:
+  157:
+  158:	  01D7	C2 99			CLR TI
+  159:	  01D9	8E 99			MOV SBUF,R6
+  160:	  01DB	30 99 FD		JNB TI, $
+  161:	  01DE	C2 99			CLR TI
+  162:	  01E0	75 99 0A		MOV SBUF,#0Ah
+  163:	  01E3	30 99 FD		JNB TI, $
+  164:
+  165:
+  166:					; reset all
+  167:	  01E6	75 31 00		MOV NUM_FIRST, #0d
+  168:	  01E9	75 32 00		MOV NUM_SEC, #0d
+  169:	  01EC	75 33 00		MOV NUM_RES, #0d
+  170:	  01EF	78 00			MOV R0, #0d
+  171:	  01F1	79 00			MOV R1, #0d
+  172:	  01F3	7A 00			MOV R2, #0d
+  173:	  01F5	7C 00			MOV R4, #0d
+  174:	  01F7	7D 00			MOV R5, #0d
+  175:	  01F9	7E 00			MOV R6, #0d
+  176:	  01FB	C2 8E			CLR TR1
+  177:	  01FD	C2 8F			CLR TF1
+  178:	  01FF	75 89 20		MOV TMOD, #00100000b ;
+  179:	  0202	75 8B FD		MOV TL1, #0FDh
+  180:	  0205	75 8D FD		MOV TH1, #0FDh
+  181:	  0208	D2 8E			SETB TR1
+  182:
+  183:	  020A	02 01 2A		LJMP _LOOP
+  184:
+  185:	  020D				_1_NUMBER:
+  186:	  020D	94 30				SUBB A,#48d
+  187:	  020F	29				ADD A,R1
+  188:	  0210	F9				MOV R1, A
+  189:	  0211	22			RET
+  190:
+  191:	  0212				_10_NUMBER:
+  192:	  0212	94 30				SUBB A,#48d
+  193:	  0214	75 F0 0A			MOV B,#10d
+  194:	  0217	A4				MUL AB
+  195:	  0218	29				ADD A, R1
+  196:	  0219	F9				MOV R1, A
+  197:	  021A	22			RET
+  198:
+  199:	  021B				_100_NUMBER:
+  200:	  021B	94 30				SUBB A,#48d
+  201:	  021D	75 F0 64			MOV B,#100d
+  202:	  0220	A4				MUL AB
+  203:	  0221	F9				MOV R1, A
+  204:	  0222	22			RET
+  205:
+  206:	  0223				_INT_TO_STRING_TO_R4_R5_R6:
+  207:						;R4 = ( NUM_RES / 100) + 48
+  208:						;R5 = ( NUM_RES % 100)/10 + 48
+  209:						;R6 = ( NUM_RES % 10) + 48
+  210:
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 5
+
+
+
+ Line  I  Addr  Code            Source
+
+  211:	  0223	C0 E0				PUSH ACC
+  212:	  0225	E5 33				MOV A, NUM_RES
+  213:	  0227	75 F0 64			MOV B, #100d
+  214:	  022A	84				DIV AB
+  215:	  022B	24 30				ADD A, #48d
+  216:	  022D	FC				MOV R4, A
+  217:
+  218:						; NUM_RES % 100
+  219:	  022E	E5 F0				MOV A,B
+  220:	  0230	75 F0 0A			MOV B,#10d
+  221:	  0233	84				DIV AB
+  222:	  0234	24 30				ADD A, #48d
+  223:	  0236	FD				MOV R5, A
+  224:	  0237	E5 F0				MOV A,B
+  225:	  0239	24 30				ADD A,#48d
+  226:	  023B	FE				MOV R6, A
+  227:
+  228:	  023C	D0 E0				POP ACC
+  229:	  023E	22			RET
+  230:
+  231:	  023F				_ADDITION:
+  232:	  023F	C0 D0				PUSH PSW
+  233:	  0241	C0 E0				PUSH ACC
+  234:	  0243	E5 31				MOV A, NUM_FIRST
+  235:	  0245	25 32				ADD A, NUM_SEC
+  236:	  0247	F5 33				MOV NUM_RES, A
+  237:	  0249	D0 E0				POP ACC
+  238:	  024B	D0 D0				POP PSW
+  239:	  024D	22			RET
+  240:
+  241:	  024E				_SUBTRACTION:
+  242:	  024E	C0 D0				PUSH PSW
+  243:	  0250	C0 E0				PUSH ACC
+  244:	  0252	E5 31				MOV A, NUM_FIRST
+  245:	  0254	95 32				SUBB A, NUM_SEC
+  246:	  0256	F5 33				MOV NUM_RES, A
+  247:	  0258	D0 E0				POP ACC
+  248:	  025A	D0 D0				POP PSW
+  249:	  025C	22			RET
+  250:
+  251:	  025D				_MULTIPLICATION:
+  252:	  025D	C0 D0				PUSH PSW
+  253:	  025F	C0 E0				PUSH ACC
+  254:	  0261	E5 31				MOV A, NUM_FIRST
+  255:	  0263	85 32 F0			MOV B, NUM_SEC
+  256:	  0266	A4				MUL AB
+  257:	  0267	F5 33				MOV NUM_RES, A
+  258:	  0269	D0 E0				POP ACC
+  259:	  026B	D0 D0				POP PSW
+  260:	  026D	22			RET
+  261:
+  262:	  026E				__DIVISION:
+  263:	  026E	C0 D0				PUSH PSW
+  264:	  0270	C0 E0				PUSH ACC
+  265:	  0272	E5 31				MOV A, NUM_FIRST
+  266:	  0274	85 32 F0			MOV B, NUM_SEC
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 6
+
+
+
+ Line  I  Addr  Code            Source
+
+  267:	  0277	84				DIV AB
+  268:	  0278	F5 33				MOV NUM_RES, A
+  269:	  027A	D0 E0				POP ACC
+  270:	  027C	D0 D0				POP PSW
+  271:	  027E	22			RET
+  272:
+  273:
+  274:				END
+
+
+
+
+
+                     register banks used:  ---
+
+                     no errors
+
+
+
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 7
+
+
+
+
+
+	       L I S T   O F   S Y M B O L S
+	       =============================
+
+
+SYMBOL				  TYPE     VALUE	LINE
+------------------------------------------------------------
+??ASEM_51			  NUMBER    8051
+??VERSION			  NUMBER    0130
+AC				  BIT	      D6
+ACC				  DATA	      E0
+B				  DATA	      F0
+CY				  BIT	      D7
+DPH				  DATA	      83
+DPL				  DATA	      82
+EA				  BIT	      AF
+ES				  BIT	      AC
+ET0				  BIT	      A9
+ET1				  BIT	      AB
+EX0				  BIT	      A8
+EX1				  BIT	      AA
+EXTI0				  CODE	    0003
+EXTI1				  CODE	    0013
+F0				  BIT	      D5
+IE				  DATA	      A8
+IE0				  BIT	      89
+IE1				  BIT	      8B
+INT0				  BIT	      B2
+INT1				  BIT	      B3
+IP				  DATA	      B8
+IT0				  BIT	      88
+IT1				  BIT	      8A
+NUM_FIRST			  DATA	      31	   5
+NUM_RES				  DATA	      33	   7
+NUM_SEC				  DATA	      32	   6
+OV				  BIT	      D2
+P				  BIT	      D0
+P0				  DATA	      80
+P1				  DATA	      90
+P2				  DATA	      A0
+P3				  DATA	      B0
+PCON				  DATA	      87
+PS				  BIT	      BC
+PSW				  DATA	      D0
+PT0				  BIT	      B9
+PT1				  BIT	      BB
+PX0				  BIT	      B8
+PX1				  BIT	      BA
+RB8				  BIT	      9A
+RD				  BIT	      B7
+REN				  BIT	      9C
+RESET				  CODE	    0000
+RI				  BIT	      98
+RS0				  BIT	      D3
+RS1				  BIT	      D4
+RXD				  BIT	      B0
+SBUF				  DATA	      99
+
+ASEM-51 V1.3                                         Copyright (c) 2002 by W.W. Heinz                                         PAGE 8
+
+
+
+SYMBOL				  TYPE     VALUE	LINE
+------------------------------------------------------------
+SCON				  DATA	      98
+SINT				  CODE	    0023
+SM0				  BIT	      9F
+SM1				  BIT	      9E
+SM2				  BIT	      9D
+SP				  DATA	      81
+T0				  BIT	      B4
+T1				  BIT	      B5
+TB8				  BIT	      9B
+TCON				  DATA	      88
+TF0				  BIT	      8D
+TF1				  BIT	      8F
+TH0				  DATA	      8C
+TH1				  DATA	      8D
+TI				  BIT	      99
+TIMER0				  CODE	    000B
+TIMER1				  CODE	    001B
+TL0				  DATA	      8A
+TL1				  DATA	      8B
+TMOD				  DATA	      89
+TR0				  BIT	      8C
+TR1				  BIT	      8E
+TXD				  BIT	      B1
+WR				  BIT	      B6
+_100_NUMBER			  CODE	    021B	 199
+_10_NUMBER			  CODE	    0212	 191
+_1_NUMBER			  CODE	    020D	 185
+_ADDITION			  CODE	    023F	 231
+_ADD_CHAR			  CODE	    019A	 116
+_DEFAULT			  CODE	    01BB	 135
+_DIV_CHAR			  CODE	    01B5	 131
+_INIT				  CODE	    0100	  16
+_INT_TO_STRING_TO_R4_R5_R6	  CODE	    0223	 206
+_IS_LOOP_0			  CODE	    012A	  50
+_IS_LOOP_1			  CODE	    0138	  59
+_IS_LOOP_10			  CODE	    01D7	 156
+_IS_LOOP_2			  CODE	    0146	  67
+_IS_LOOP_3			  CODE	    0158	  77
+_IS_LOOP_4			  CODE	    0164	  85
+_IS_LOOP_5			  CODE	    0172	  93
+_IS_LOOP_6			  CODE	    0180	 101
+_IS_LOOP_7			  CODE	    0192	 111
+_IS_LOOP_8			  CODE	    01C1	 142
+_IS_LOOP_9			  CODE	    01CC	 149
+_LOOP				  CODE	    012A	  42
+_MULTIPLICATION			  CODE	    025D	 251
+_MUL_CHAR			  CODE	    01AC	 126
+_RESET				  CODE	    0000	  12
+_SUBTRACTION			  CODE	    024E	 241
+_SUB_CHAR			  CODE	    01A3	 121
+__DIVISION			  CODE	    026E	 262
